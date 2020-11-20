@@ -22,7 +22,7 @@ async def main():
     ts_file_name = os.getenv("TIMESTAMP_FILE", "./aoc_timestamp.txt")
 
     async with seabird.Client(
-        os.getenv("SEABIRD_HOST", "https://seabird-core.elwert.cloud"),
+        os.getenv("SEABIRD_HOST"),
         os.getenv("SEABIRD_TOKEN"),
     ) as client:
 

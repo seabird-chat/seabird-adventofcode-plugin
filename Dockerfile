@@ -11,8 +11,8 @@ RUN pip install poetry
 
 WORKDIR /etc/adventofcode
 
-COPY pyproject.toml poetry.lock .
+COPY pyproject.toml poetry.lock ./
 RUN poetry install
 COPY . .
 
-CMD ["python", "-m", "adventofcode"]
+CMD ["poetry", "run", "python", "-m", "adventofcode"]
