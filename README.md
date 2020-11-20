@@ -1,1 +1,1 @@
-# sample-python-plugin
+# seabird-adventofcode-plugin
