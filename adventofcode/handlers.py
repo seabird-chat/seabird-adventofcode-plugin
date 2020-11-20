@@ -66,7 +66,7 @@ class AdventOfCodeClient:
         while True:
             print("Looking up current leaderboard")
 
-            leaderboard = await self.lookup_leaderboard(event="2019")
+            leaderboard = await self.lookup_leaderboard()
             events = list(filter(lambda event: event.ts > current_timestamp, leaderboard.events))
 
             if events:
