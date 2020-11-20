@@ -9,15 +9,15 @@ from .handlers import AdventOfCodeClient
 async def main():
     aoc_session = os.getenv("AOC_SESSION")
     if aoc_session is None:
-        raise ValueError('Missing AOC_SESSION')
+        raise ValueError("Missing AOC_SESSION")
 
     aoc_leaderboard = os.getenv("AOC_LEADERBOARD")
     if aoc_leaderboard is None:
-        raise ValueError('Missing AOC_LEADERBOARD')
+        raise ValueError("Missing AOC_LEADERBOARD")
 
     aoc_channel = os.getenv("AOC_CHANNEL")
     if aoc_channel is None:
-        raise ValueError('Missing AOC_CHANNEL')
+        raise ValueError("Missing AOC_CHANNEL")
 
     ts_file_name = os.getenv("TIMESTAMP_FILE", "./aoc_timestamp.txt")
 

@@ -1,3 +1,6 @@
+[tool.black]
+line-length = 100
+
 [tool.poetry]
 name = "seabird-adventofcode-plugin"
 version = "0.1.0"
