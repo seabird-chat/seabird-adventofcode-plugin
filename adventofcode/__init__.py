@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 
 import seabird
@@ -6,31 +7,31 @@ import seabird
 from .handlers import AdventOfCodeClient
 
 
+LOG = logging.getLogger("adventofcode")
+
+
 async def main():
-    aoc_session = os.getenv("AOC_SESSION")
-    if aoc_session is None:
-        raise ValueError("Missing AOC_SESSION")
+    logging.basicConfig(
+        format='[%(levelname)s %(asctime)s %(name)s] %(message)s',
+        level=os.getenv("LOG_LEVEL", "INFO"),
+    )
 
-    aoc_leaderboard = os.getenv("AOC_LEADERBOARD")
-    if aoc_leaderboard is None:
-        raise ValueError("Missing AOC_LEADERBOARD")
-
-    aoc_channel = os.getenv("AOC_CHANNEL")
-    if aoc_channel is None:
-        raise ValueError("Missing AOC_CHANNEL")
+    aoc_session = os.environ["AOC_SESSION"]
+    aoc_leaderboard = os.environ["AOC_LEADERBOARD"]
+    aoc_channel = os.environ["AOC_CHANNEL"]
 
     ts_file_name = os.getenv("TIMESTAMP_FILE", "./aoc_timestamp.txt")
 
     async with seabird.Client(
-        os.getenv("SEABIRD_HOST"),
-        os.getenv("SEABIRD_TOKEN"),
+        os.environ["SEABIRD_HOST"],
+        os.environ["SEABIRD_TOKEN"],
     ) as client:
 
         # Run a simple command to ensure we're connected. Otherwise, it will
         # wait until the stream events to tell us when we failed to connect and
         # the message will be wrong.
         await client.get_core_info()
-        print("Connected to Seabird Core")
+        LOG.info("Connected to Seabird Core")
 
         async with AdventOfCodeClient(client, aoc_session, aoc_leaderboard, aoc_channel) as aoc:
             await asyncio.gather(

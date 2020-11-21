@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 from datetime import datetime
 from urllib.parse import urlparse
@@ -7,6 +8,13 @@ import aiohttp
 import betterproto
 
 from .leaderboard import Leaderboard
+
+
+TOP_SCORE_COUNT = 5
+CHECK_STATUS_DELAY = 900
+
+
+LOG = logging.getLogger("adventofcode")
 
 
 class AdventOfCodeClient:
@@ -35,12 +43,12 @@ class AdventOfCodeClient:
                 asyncio.create_task(self.handle_command(val))
 
     async def handle_command(self, command):
-        if command.command == "aoc":
+        if command.command == "aoc" or command.command == "advent":
             arg = command.arg.strip()
             leaderboard = await self.lookup_leaderboard(event=arg)
             scores = [
                 f"{member.name} ({member.local_score})"
-                for member in leaderboard.members_by_score[:5]
+                for member in leaderboard.members_by_score[:TOP_SCORE_COUNT]
             ]
             await self.seabird.send_message(
                 channel_id=command.source.channel_id, text=", ".join(scores)
@@ -49,6 +57,8 @@ class AdventOfCodeClient:
     async def lookup_leaderboard(self, event=None):
         if not event:
             event = str(datetime.today().year)
+
+        LOG.info("Looking up leaderboard for %s", event)
 
         async with self.aoc.get(
             f"https://adventofcode.com/{event}/leaderboard/private/view/{self.leaderboard_id}.json"
@@ -64,13 +74,19 @@ class AdventOfCodeClient:
             current_timestamp = 0
 
         while True:
-            print("Looking up current leaderboard")
+            LOG.info("Checking leaderboard status")
 
             leaderboard = await self.lookup_leaderboard()
-            events = list(filter(lambda event: event.ts > current_timestamp, leaderboard.events))
+            events = [
+                event for event in leaderboard.events
+                if event.ts > current_timestamp
+            ]
 
             if events:
-                print(f"Found {len(events)} events")
+                LOG.info("Found %d new event(s)", len(events))
+            else:
+                LOG.debug("Found 0 new event(s)")
+
             for event in events:
                 await self.seabird.send_message(channel_id=self.channel, text=str(event))
 
@@ -80,4 +96,5 @@ class AdventOfCodeClient:
                 with open(f_name, "w") as f:
                     f.write(str(event.ts))
 
-            await asyncio.sleep(900)
+            LOG.info("Sleeping for %d seconds", CHECK_STATUS_DELAY)
+            await asyncio.sleep(CHECK_STATUS_DELAY)

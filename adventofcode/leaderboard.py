@@ -46,10 +46,8 @@ class Member:
 
         # Sort all the items then go through and update absolute_star
         ret.sort(key=lambda x: x.ts)
-        i = 1
-        for event in ret:
+        for i, event in enumerate(ret, start=1):
             event.absolute_star = i
-            i += 1
 
         return ret
 
@@ -62,7 +60,7 @@ class Event:
         self.member = member
         self.day = day
         self.star = star
-        self.ts = int(ts, base=10)
+        self.ts = int(ts)
         self.absolute_star = 0
 
     def __str__(self):
