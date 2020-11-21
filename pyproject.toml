@@ -9,6 +9,7 @@ authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+aiofile = "^3.3.0"
 aiohttp = "^3.7.0"
 humanize = "^3.1.0"
 python-dotenv = "^0.15.0"

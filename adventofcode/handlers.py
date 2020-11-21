@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 import betterproto
+from aiofile import async_open
 
 from .leaderboard import Leaderboard
 
@@ -67,8 +68,8 @@ class AdventOfCodeClient:
 
     async def check_status(self, f_name):
         try:
-            with open(f_name, "r") as f:
-                raw_timestamp = f.read()
+            async with async_open(f_name, "r") as f:
+                raw_timestamp = await f.read()
                 current_timestamp = int(raw_timestamp, base=10) if raw_timestamp else 0
         except FileNotFoundError:
             current_timestamp = 0
@@ -93,8 +94,8 @@ class AdventOfCodeClient:
                 # It's arguably worse to cause a write on every message sent,
                 # but this will make it possible to properly handle things if we
                 # fail to send a message without having to start over.
-                with open(f_name, "w") as f:
-                    f.write(str(event.ts))
+                async with async_open(f_name, "w") as f:
+                    await f.write(str(event.ts))
 
             LOG.info("Sleeping for %d seconds", CHECK_STATUS_DELAY)
             await asyncio.sleep(CHECK_STATUS_DELAY)
