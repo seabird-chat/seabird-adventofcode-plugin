@@ -97,5 +97,7 @@ class AdventOfCodeClient:
                 async with async_open(f_name, "w") as f:
                     await f.write(str(event.ts))
 
+                current_timestamp = event.ts
+
             LOG.info("Sleeping for %d seconds", CHECK_STATUS_DELAY)
             await asyncio.sleep(CHECK_STATUS_DELAY)
