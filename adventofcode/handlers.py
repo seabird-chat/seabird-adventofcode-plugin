@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import aiohttp
 import betterproto
 from aiofile import async_open
+from dateutil.tz import gettz
 
 from .leaderboard import Leaderboard
 
@@ -14,6 +15,7 @@ from .leaderboard import Leaderboard
 TOP_SCORE_COUNT = 5
 CHECK_STATUS_DELAY = 900
 
+AOC_TIMEZONE = gettz("US/Eastern")
 
 LOG = logging.getLogger("adventofcode")
 
@@ -57,7 +59,7 @@ class AdventOfCodeClient:
 
     async def lookup_leaderboard(self, event=None):
         if not event:
-            today = datetime.today()
+            today = datetime.now(tz=AOC_TIMEZONE)
             if today.month == 12:
                 event = str(today.year)
             else:
