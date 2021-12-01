@@ -1,0 +1,7 @@
+pipeline:
+  publish:
+    image: plugins/docker
+    repo: seabirdchat/seabird-adventofcode-plugin
+    secrets: [ docker_username, docker_password ]
+    when:
+      branch: main
