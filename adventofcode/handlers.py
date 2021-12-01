@@ -57,7 +57,11 @@ class AdventOfCodeClient:
 
     async def lookup_leaderboard(self, event=None):
         if not event:
-            event = str(datetime.today().year)
+            today = datetime.today()
+            if today.month == 12:
+                event = str(today.year)
+            else:
+                event = str(today.year - 1)
 
         LOG.info("Looking up leaderboard for %s", event)
 
