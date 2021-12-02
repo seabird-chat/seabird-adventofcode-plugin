@@ -133,7 +133,7 @@ class AdventOfCodeClient:
                 next_reminder = now + relativedelta(month=11, hour=23, minute=45)
                 day = 1
 
-            sleep_secs = (now - next_reminder).total_seconds()
+            sleep_secs = (next_reminder - now).total_seconds()
             LOG.info("Next reminder scheduled for %s - sleeping for %d seconds", next_reminder, sleep_secs)
 
             await asyncio.sleep(sleep_secs)
@@ -162,7 +162,7 @@ class AdventOfCodeClient:
                 next_reminder = now + relativedelta(month=12, hour=0, minute=0)
                 day = 1
 
-            sleep_secs = (now - next_reminder).total_seconds()
+            sleep_secs = (next_reminder - now).total_seconds()
             LOG.info("Next gotime scheduled for %s - sleeping for %d seconds", next_reminder, sleep_secs)
 
             await asyncio.sleep(sleep_secs)
