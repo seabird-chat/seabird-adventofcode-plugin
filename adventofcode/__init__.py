@@ -37,4 +37,6 @@ async def main():
             await asyncio.gather(
                 aoc.stream_messages(),
                 aoc.check_status(ts_file_name),
+                aoc.schedule_reminders(),
+                aoc.schedule_gotime(),
             )

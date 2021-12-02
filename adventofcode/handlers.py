@@ -1,13 +1,12 @@
 import asyncio
 import logging
-import sys
 from datetime import datetime
-from urllib.parse import urlparse
 
 import aiohttp
 import betterproto
 from aiofile import async_open
 from dateutil.tz import gettz
+from dateutil.relativedelta import relativedelta
 
 from .leaderboard import Leaderboard
 
@@ -107,3 +106,64 @@ class AdventOfCodeClient:
 
             LOG.info("Sleeping for %d seconds", CHECK_STATUS_DELAY)
             await asyncio.sleep(CHECK_STATUS_DELAY)
+
+    async def schedule_reminders(self):
+        while True:
+            # Determine the next notification time
+
+            # On the last day of November and the first 24 days of December, we
+            # want a reminder at 11:45 pm.
+
+            next_reminder = None
+            now = datetime.now(tz=AOC_TIMEZONE)
+            day = 0
+
+            if now.month == 12 and now.day >= 25:
+                # We have to special case the end of December because the next
+                # event is "next year".
+                next_reminder = now + relativedelta(years=+1, month=11, hour=23, minute=45)
+                day = 1
+            elif now.month == 12 and now.hour >= 23 and now.minute >= 45:
+                next_reminder = now + relativedelta(days=+1, hour=23, minute=45)
+                day = now.day + 2
+            elif now.month == 12:
+                next_reminder = now + relativedelta(hour=23, minute=45)
+                day = now.day + 1
+            else:
+                next_reminder = now + relativedelta(month=11, hour=23, minute=45)
+                day = 1
+
+            LOG.info("Next reminder scheduled for %s", next_reminder)
+
+            await asyncio.sleep((now - next_reminder).total_seconds())
+
+            msg = "Advent of Code day %d is starting in 15 minutes! https://www.youtube.com/watch?v=Vwd9mNXu3Uc" % day
+            await self.seabird.send_message(channel_id=self.channel, text=str(msg))
+
+    async def schedule_gotime(self):
+        while True:
+            # On the last day of November and the first 24 days of December, we
+            # want a reminder at midnight.
+
+            next_reminder = None
+            now = datetime.now(tz=AOC_TIMEZONE)
+            day = 0
+
+            if now.month == 12 and now.day >= 25:
+                # We have to special case the end of December because the next
+                # event is "next year".
+                next_reminder = now + relativedelta(years=+1, month=12, hour=0, minute=0)
+                day = 1
+            elif now.month == 12:
+                next_reminder = now + relativedelta(days=+1, hour=0, minute=0)
+                day = now.day + 1
+            else:
+                next_reminder = now + relativedelta(month=12, hour=0, minute=0)
+                day = 1
+
+            LOG.info("Next gotime scheduled for %s", next_reminder)
+
+            await asyncio.sleep((now - next_reminder).total_seconds())
+
+            msg = "Advent of Code day %d is live! GO GO GO! https://youtu.be/Vwd9mNXu3Uc?t=46" % day
+            await self.seabird.send_message(channel_id=self.channel, text=str(msg))
