@@ -21,7 +21,7 @@ LOG = logging.getLogger("adventofcode")
 
 class AdventOfCodeClient:
     def __init__(self, seabird, session_id, leaderboard_id, target_channel):
-        aoc = aiohttp.ClientSession()
+        aoc = aiohttp.ClientSession(headers={"User-Agent": "seabird-adventofcode-plugin"})
         aoc.cookie_jar.update_cookies({"session": session_id})
 
         self.aoc = aoc
