@@ -121,16 +121,16 @@ class AdventOfCodeClient:
             if now.month == 12 and now.day >= 25:
                 # We have to special case the end of December because the next
                 # event is "next year".
-                next_reminder = now + relativedelta(years=+1, month=11, hour=23, minute=45)
+                next_reminder = now + relativedelta(years=+1, month=11, hour=23, minute=45, second=0)
                 day = 1
             elif now.month == 12 and now.hour >= 23 and now.minute >= 45:
-                next_reminder = now + relativedelta(days=+1, hour=23, minute=45)
+                next_reminder = now + relativedelta(days=+1, hour=23, minute=45, second=0)
                 day = now.day + 2
             elif now.month == 12:
-                next_reminder = now + relativedelta(hour=23, minute=45)
+                next_reminder = now + relativedelta(hour=23, minute=45, second=0)
                 day = now.day + 1
             else:
-                next_reminder = now + relativedelta(month=11, hour=23, minute=45)
+                next_reminder = now + relativedelta(month=11, hour=23, minute=45, second=0)
                 day = 1
 
             sleep_secs = (next_reminder - now).total_seconds()
@@ -153,13 +153,13 @@ class AdventOfCodeClient:
             if now.month == 12 and now.day >= 25:
                 # We have to special case the end of December because the next
                 # event is "next year".
-                next_reminder = now + relativedelta(years=+1, month=12, hour=0, minute=0)
+                next_reminder = now + relativedelta(years=+1, month=12, hour=0, minute=0, second=0)
                 day = 1
             elif now.month == 12:
-                next_reminder = now + relativedelta(days=+1, hour=0, minute=0)
+                next_reminder = now + relativedelta(days=+1, hour=0, minute=0, second=0)
                 day = now.day + 1
             else:
-                next_reminder = now + relativedelta(month=12, hour=0, minute=0)
+                next_reminder = now + relativedelta(month=12, hour=0, minute=0, second=0)
                 day = 1
 
             sleep_secs = (next_reminder - now).total_seconds()
