@@ -138,7 +138,7 @@ class AdventOfCodeClient:
 
             await asyncio.sleep(sleep_secs)
 
-            msg = "Advent of Code day %d is starting in 15 minutes! https://www.youtube.com/watch?v=Vwd9mNXu3Uc" % day
+            msg = "Advent of Code day %d is starting in 15 minutes!" % day
             await self.seabird.send_message(channel_id=self.channel, text=str(msg))
 
     async def schedule_gotime(self):
@@ -167,5 +167,5 @@ class AdventOfCodeClient:
 
             await asyncio.sleep(sleep_secs)
 
-            msg = "Advent of Code day %d is live! GO GO GO! https://youtu.be/Vwd9mNXu3Uc?t=46" % day
+            msg = "Advent of Code day %d is live!" % day
             await self.seabird.send_message(channel_id=self.channel, text=str(msg))

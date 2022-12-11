@@ -44,10 +44,8 @@ class Member:
             for star, star_data in stars.items():
                 ret.append(Event(self, day, star, star_data["get_star_ts"]))
 
-        # Sort all the items then go through and update absolute_star
+        # Sort all the items before returning.
         ret.sort(key=lambda x: x.ts)
-        for i, event in enumerate(ret, start=1):
-            event.absolute_star = i
 
         return ret
 
@@ -61,13 +59,11 @@ class Event:
         self.day = day
         self.star = star
         self.ts = int(ts)
-        self.absolute_star = 0
 
     def __str__(self):
         return (
             f"AoC {self.member.leaderboard.event}: "
             f"{self.member.name} completed "
-            f"their {ordinal(self.absolute_star)} star, "
             f"the {ordinal(self.star)} star of day {self.day}, "
             f"at {datetime.fromtimestamp(self.ts).isoformat()} ({self.ts})"
         )
