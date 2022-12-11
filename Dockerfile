@@ -12,7 +12,11 @@ RUN pip install poetry
 WORKDIR /etc/adventofcode
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install
+RUN apt-get update && apt-get install -y build-essential \
+    && poetry install \
+    && apt-get remove -y --purge build-essential \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
 COPY . .
 
 CMD ["poetry", "run", "python", "-m", "adventofcode"]
