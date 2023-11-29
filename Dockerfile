@@ -1,4 +1,4 @@
-FROM python:3-slim
+FROM python:3.11-slim
 
 # Magic python/pip environment variables
 ENV PYTHONUNBUFFERED=1 \
