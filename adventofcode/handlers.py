@@ -118,7 +118,7 @@ class AdventOfCodeClient:
             now = datetime.now(tz=AOC_TIMEZONE)
             day = 0
 
-            if now.month == 12 and now.day >= 25:
+            if now.month == 12 and now.day >= 24 and now.hour >= 23 and now.minute >= 45:
                 # We have to special case the end of December because the next
                 # event is "next year".
                 next_reminder = now + relativedelta(years=+1, month=11, day=31, hour=23, minute=45, second=0)
