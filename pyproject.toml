@@ -6,6 +6,7 @@ name = "seabird-adventofcode-plugin"
 version = "0.1.0"
 description = ""
 authors = ["Kaleb Elwert <belak@coded.io>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
