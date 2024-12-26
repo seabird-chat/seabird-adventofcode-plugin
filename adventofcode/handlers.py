@@ -118,17 +118,17 @@ class AdventOfCodeClient:
             now = datetime.now(tz=AOC_TIMEZONE)
             day = 0
 
-            if now.month == 12 and now.day >= 24 and now.hour >= 23 and now.minute >= 45:
+            if now.month == 12 and now.day <= 24 and now.hour >= 23 and now.minute >= 45:
+                next_reminder = now + relativedelta(days=+1, hour=23, minute=45, second=0)
+                day = now.day + 2
+            elif now.month == 12 and now.day <= 24:
+                next_reminder = now + relativedelta(hour=23, minute=45, second=0)
+                day = now.day + 1
+            elif now.month == 12:
                 # We have to special case the end of December because the next
                 # event is "next year".
                 next_reminder = now + relativedelta(years=+1, month=11, day=31, hour=23, minute=45, second=0)
                 day = 1
-            elif now.month == 12 and now.hour >= 23 and now.minute >= 45:
-                next_reminder = now + relativedelta(days=+1, hour=23, minute=45, second=0)
-                day = now.day + 2
-            elif now.month == 12:
-                next_reminder = now + relativedelta(hour=23, minute=45, second=0)
-                day = now.day + 1
             elif now.month == 11 and now.day >= 30 and now.hour >= 23 and now.minute >= 45:
                 next_reminder = now + relativedelta(days=+1, hour=23, minute=45, second=0)
                 day = 1
