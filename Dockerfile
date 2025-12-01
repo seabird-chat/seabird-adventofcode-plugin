@@ -1,22 +1,22 @@
-FROM python:3.11-slim
+# Stage 1: Build the application
+FROM golang:1.25-trixie as builder
 
-# Magic python/pip environment variables
-ENV PYTHONUNBUFFERED=1 \
-  PYTHONDONTWRITEBYTECODE=1 \
-  PYTHONHASHSEED=random \
-  PIP_NO_CACHE_DIR=off \
-  PIP_DISABLE_PIP_VERSION_CHECK=on
+RUN mkdir /build
 
-RUN pip install poetry
+WORKDIR /app
 
-WORKDIR /etc/adventofcode
+ADD ./go.mod ./go.sum ./
+RUN go mod download
 
-COPY pyproject.toml poetry.lock ./
-RUN apt-get update && apt-get install -y build-essential \
-    && poetry install \
-    && apt-get remove -y --purge build-essential \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
-COPY . .
+ADD . ./
+RUN go build -v -o /build/ ./cmd/*
 
-CMD ["poetry", "run", "python", "-m", "adventofcode"]
+# Stage 2: Copy files and configure what we need
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/seabird-entrypoint.sh
+COPY --from=builder /build /bin
+
+CMD ["/usr/local/bin/seabird-entrypoint.sh"]
