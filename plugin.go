@@ -112,15 +112,18 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 		return
 	}
 
-	// Convert members map to slice
+	// Convert members map to slice, filtering out members with no stars
 	members := make([]Member, 0, len(leaderboard.Members))
 	for _, member := range leaderboard.Members {
+		if member.Stars == 0 {
+			continue
+		}
 		members = append(members, member)
 	}
 
-	// Sort by LocalScore descending
+	// Sort by Stars descending
 	slices.SortFunc(members, func(a, b Member) int {
-		return b.LocalScore - a.LocalScore
+		return b.Stars - a.Stars
 	})
 
 	// Take top N members
@@ -128,10 +131,10 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 		members = members[:topScoreCount]
 	}
 
-	// Format scores
+	// Format star counts
 	var scores []string
 	for _, member := range members {
-		scores = append(scores, fmt.Sprintf("%s (%d)", member.Name, member.LocalScore))
+		scores = append(scores, fmt.Sprintf("%s (%d)", member.Name, member.Stars))
 	}
 
 	// Send reply
