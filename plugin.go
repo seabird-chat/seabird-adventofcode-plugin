@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/seabird-chat/seabird-go"
@@ -47,6 +48,9 @@ type Plugin struct {
 	sbClient    *seabird.Client
 	aocClient   *AOCClient
 	queueUpdate chan chan bool
+
+	cacheLock         sync.RWMutex
+	cachedLeaderboard *Leaderboard
 }
 
 func NewPlugin(logger *slog.Logger, config Config) (*Plugin, error) {
@@ -105,11 +109,25 @@ func (p *Plugin) runSeabirdStream(ctx context.Context) error {
 func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 	arg := strings.TrimSpace(event.Arg)
 
-	leaderboard, err := p.lookupLeaderboard(ctx, arg)
-	if err != nil {
-		p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
-		_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
-		return
+	var leaderboard *Leaderboard
+	var err error
+
+	// When no args provided, try to use cached leaderboard
+	if arg == "" {
+		p.cacheLock.RLock()
+		leaderboard = p.cachedLeaderboard
+		p.cacheLock.RUnlock()
+	}
+
+	// If no cache or args were provided, fetch from API
+	if leaderboard == nil {
+		p.logger.With(slog.String("event", arg)).Info("Leaderboard not cached, calling API")
+		leaderboard, err = p.lookupLeaderboard(ctx, arg)
+		if err != nil {
+			p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
+			_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
+			return
+		}
 	}
 
 	// Convert members map to slice, filtering out members with no stars
@@ -137,8 +155,9 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 		scores = append(scores, fmt.Sprintf("%s (%d)", member.Name, member.Stars))
 	}
 
-	// Send reply
-	_ = p.sbClient.Reply(event.Source, strings.Join(scores, ", "))
+	// Send reply with event name
+	reply := fmt.Sprintf("AoC %s: %s", leaderboard.Event, strings.Join(scores, ", "))
+	_ = p.sbClient.Reply(event.Source, reply)
 }
 
 func (p *Plugin) handleRefresh(ctx context.Context, event *pb.CommandEvent) {
@@ -209,6 +228,11 @@ func (p *Plugin) updateLeaderboard(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Update the cache with the latest leaderboard
+	p.cacheLock.Lock()
+	p.cachedLeaderboard = leaderboard
+	p.cacheLock.Unlock()
 
 	lastUpdated, err := p.readLastUpdated()
 	if err != nil {
