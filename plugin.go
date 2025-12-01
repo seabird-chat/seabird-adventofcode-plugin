@@ -46,7 +46,7 @@ type Plugin struct {
 	config      Config
 	sbClient    *seabird.Client
 	aocClient   *AOCClient
-	queueUpdate chan chan struct{}
+	queueUpdate chan chan bool
 }
 
 func NewPlugin(logger *slog.Logger, config Config) (*Plugin, error) {
@@ -65,7 +65,7 @@ func NewPlugin(logger *slog.Logger, config Config) (*Plugin, error) {
 		config:      config,
 		sbClient:    sbClient,
 		aocClient:   aocClient,
-		queueUpdate: make(chan chan struct{}),
+		queueUpdate: make(chan chan bool),
 	}, nil
 }
 
@@ -139,15 +139,19 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 }
 
 func (p *Plugin) handleRefresh(ctx context.Context, event *pb.CommandEvent) {
-	updateResp := make(chan struct{})
+	updateResp := make(chan bool, 1)
 
 	select {
 	case p.queueUpdate <- updateResp:
 		_ = p.sbClient.MentionReply(event.Source, "Queued leaderboard refresh")
 
 		select {
-		case <-updateResp:
-			_ = p.sbClient.MentionReply(event.Source, "Leaderboard successfully refreshed")
+		case ok := <-updateResp:
+			if ok {
+				_ = p.sbClient.MentionReply(event.Source, "Leaderboard successfully refreshed")
+			} else {
+				_ = p.sbClient.MentionReply(event.Source, "Failed to refresh leaderboard")
+			}
 		case <-time.After(5 * time.Second):
 			_ = p.sbClient.MentionReply(event.Source, "Leaderboard refresh timed out")
 		}
@@ -287,7 +291,7 @@ func (p *Plugin) runAOCUpdateLoop(ctx context.Context) {
 
 			// Notify the listener that we're done
 			select {
-			case updateResp <- struct{}{}:
+			case updateResp <- err == nil:
 			default:
 			}
 		}
