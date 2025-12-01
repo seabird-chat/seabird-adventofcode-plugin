@@ -269,7 +269,7 @@ func (p *Plugin) runAOCUpdateLoop(ctx context.Context) {
 			if err != nil {
 				p.logger.With(slog.Any("error", err)).Error(fmt.Sprintf("Failed to update leaderboard, trying again in %s", leaderboardTickFrequency))
 			}
-		case <-p.queueUpdate:
+		case updateResp := <-p.queueUpdate:
 			// If we got a request to queue an update, reset the 15m timer to
 			// avoid purposefully making requests too frequently. It is still
 			// technically possible for users to spam this, but hopefully that
@@ -281,7 +281,15 @@ func (p *Plugin) runAOCUpdateLoop(ctx context.Context) {
 				p.logger.With(slog.Any("error", err)).Error(fmt.Sprintf("Failed to update leaderboard, trying again in %s", leaderboardTickFrequency))
 			}
 
+			p.logger.Info(fmt.Sprintf("Resetting leaderboard update ticker to %s", leaderboardTickFrequency))
+
 			ticker.Reset(leaderboardTickFrequency)
+
+			// Notify the listener that we're done
+			select {
+			case updateResp <- struct{}{}:
+			default:
+			}
 		}
 	}
 }
