@@ -112,22 +112,18 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 	var leaderboard *Leaderboard
 	var err error
 
-	// When no args provided, try to use cached leaderboard
+	// When no args provided, use cached leaderboard or fetch current year
 	if arg == "" {
-		p.cacheLock.RLock()
-		leaderboard = p.cachedLeaderboard
-		p.cacheLock.RUnlock()
+		leaderboard, err = p.getOrCacheLeaderboard(ctx)
+	} else {
+		// When specific year provided, fetch from API directly
+		leaderboard, err = p.lookupLeaderboard(ctx, arg)
 	}
 
-	// If no cache or args were provided, fetch from API
-	if leaderboard == nil {
-		p.logger.With(slog.String("event", arg)).Info("Leaderboard not cached, calling API")
-		leaderboard, err = p.lookupLeaderboard(ctx, arg)
-		if err != nil {
-			p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
-			_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
-			return
-		}
+	if err != nil {
+		p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
+		_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
+		return
 	}
 
 	// Convert members map to slice, filtering out members with no stars
