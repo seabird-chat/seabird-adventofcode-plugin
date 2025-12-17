@@ -223,6 +223,32 @@ func (p *Plugin) writeLastUpdated(cur time.Time) error {
 	return os.WriteFile(p.config.TimestampFile, []byte(strconv.FormatInt(cur.Unix(), 10)), fs.ModePerm)
 }
 
+func (p *Plugin) getOrCacheLeaderboard(ctx context.Context) (*Leaderboard, error) {
+	// Try to use cached leaderboard first
+	p.cacheLock.RLock()
+	leaderboard := p.cachedLeaderboard
+	p.cacheLock.RUnlock()
+
+	// If cache is available, return it
+	if leaderboard != nil {
+		return leaderboard, nil
+	}
+
+	// If no cache available, fetch from API and update cache
+	p.logger.Info("Leaderboard not cached, calling API")
+	leaderboard, err := p.lookupLeaderboard(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the cache
+	p.cacheLock.Lock()
+	p.cachedLeaderboard = leaderboard
+	p.cacheLock.Unlock()
+
+	return leaderboard, nil
+}
+
 func (p *Plugin) updateLeaderboard(ctx context.Context) error {
 	leaderboard, err := p.lookupLeaderboard(ctx, "")
 	if err != nil {
@@ -349,10 +375,10 @@ func calculateNextReminder(leaderboard *Leaderboard, now time.Time) (time.Time, 
 
 func (p *Plugin) scheduleReminders(ctx context.Context) {
 	for {
-		// Fetch the current leaderboard to get Day1Timestamp and NumDays
-		leaderboard, err := p.lookupLeaderboard(ctx, "")
+		// Get the cached leaderboard, so we can have access to NumDays and Day1Timestamp.
+		leaderboard, err := p.getOrCacheLeaderboard(ctx)
 		if err != nil {
-			p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard for reminders, retrying in 1 hour")
+			p.logger.With(slog.Any("error", err)).Error("Failed to get leaderboard for reminders, retrying in 1 hour")
 			select {
 			case <-time.After(1 * time.Hour):
 				continue
