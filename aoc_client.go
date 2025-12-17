@@ -136,7 +136,7 @@ func (c *AOCClient) GetLeaderboard(ctx context.Context, event string, id string)
 	}
 	req = req.WithContext(ctx)
 
-	req.Header.Add("User-Agent", "seabird-adventofcode-plugin (kaleb@coded.io)")
+	req.Header.Add("User-Agent", "seabird-adventofcode-plugin")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
