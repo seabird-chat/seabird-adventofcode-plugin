@@ -19,7 +19,7 @@ var dateFormat = "2006-01-02 15:04:05 MST"
 type Leaderboard struct {
 	Event         string `json:"event"`
 	NumDays       int    `json:"num_days"`
-	Day1Timestamp int    `json:"day1_ts"`
+	Day1Timestamp int64  `json:"day1_ts"`
 	OwnerID       int    `json:"owner_id"`
 
 	Members map[string]Member `json:"members"`

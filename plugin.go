@@ -112,22 +112,18 @@ func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
 	var leaderboard *Leaderboard
 	var err error
 
-	// When no args provided, try to use cached leaderboard
+	// When no args provided, use cached leaderboard or fetch current year
 	if arg == "" {
-		p.cacheLock.RLock()
-		leaderboard = p.cachedLeaderboard
-		p.cacheLock.RUnlock()
+		leaderboard, err = p.getOrCacheLeaderboard(ctx)
+	} else {
+		// When specific year provided, fetch from API directly
+		leaderboard, err = p.lookupLeaderboard(ctx, arg)
 	}
 
-	// If no cache or args were provided, fetch from API
-	if leaderboard == nil {
-		p.logger.With(slog.String("event", arg)).Info("Leaderboard not cached, calling API")
-		leaderboard, err = p.lookupLeaderboard(ctx, arg)
-		if err != nil {
-			p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
-			_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
-			return
-		}
+	if err != nil {
+		p.logger.With(slog.Any("error", err)).Error("Failed to lookup leaderboard")
+		_ = p.sbClient.MentionReply(event.Source, "Failed to lookup leaderboard")
+		return
 	}
 
 	// Convert members map to slice, filtering out members with no stars
@@ -221,6 +217,32 @@ func (p *Plugin) readLastUpdated() (time.Time, error) {
 
 func (p *Plugin) writeLastUpdated(cur time.Time) error {
 	return os.WriteFile(p.config.TimestampFile, []byte(strconv.FormatInt(cur.Unix(), 10)), fs.ModePerm)
+}
+
+func (p *Plugin) getOrCacheLeaderboard(ctx context.Context) (*Leaderboard, error) {
+	// Try to use cached leaderboard first
+	p.cacheLock.RLock()
+	leaderboard := p.cachedLeaderboard
+	p.cacheLock.RUnlock()
+
+	// If cache is available, return it
+	if leaderboard != nil {
+		return leaderboard, nil
+	}
+
+	// If no cache available, fetch from API and update cache
+	p.logger.Info("Leaderboard not cached, calling API")
+	leaderboard, err := p.lookupLeaderboard(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the cache
+	p.cacheLock.Lock()
+	p.cachedLeaderboard = leaderboard
+	p.cacheLock.Unlock()
+
+	return leaderboard, nil
 }
 
 func (p *Plugin) updateLeaderboard(ctx context.Context) error {
@@ -325,43 +347,51 @@ func (p *Plugin) runAOCUpdateLoop(ctx context.Context) {
 	}
 }
 
+func calculateNextReminder(leaderboard *Leaderboard, now time.Time) (time.Time, int) {
+	day1Start := time.Unix(leaderboard.Day1Timestamp, 0).In(tzEastern)
+	firstNotificationTime := day1Start.Add(-15 * time.Minute)
+
+	// If the first notification time hasn't been hit, we're some time before the event has started, so we can just
+	// return the firstNotificationTime.
+	if firstNotificationTime.After(now) {
+		return firstNotificationTime, 1
+	}
+
+	// Calculate how many days before or after the start date we are
+	daysSinceStart := int(now.Sub(firstNotificationTime).Hours() / 24) + 1
+
+	// If we're after the last notification, we need to send what we think the first notification for next year will be.
+	if daysSinceStart >= leaderboard.NumDays {
+		return firstNotificationTime.AddDate(1, 0, 0), 1
+	}
+
+	// During the event we add which day we're on to the first notification time
+	return firstNotificationTime.AddDate(0, 0, daysSinceStart), daysSinceStart + 1
+}
+
 func (p *Plugin) scheduleReminders(ctx context.Context) {
 	for {
-		// Determine the next notification time
-
-		// On the last day of November and the first 24 days of December, we
-		// want a reminder at 11:45 pm.
-
-		now := time.Now().In(tzEastern)
-		var nextReminder time.Time
-		var day int
-
-		if now.Month() == time.December && now.Day() <= 24 && now.Hour() >= 23 && now.Minute() >= 45 {
-			// After 11:45 PM on Dec 1-24, schedule for next day
-			nextReminder = time.Date(now.Year(), now.Month(), now.Day()+1, 23, 45, 0, 0, tzEastern)
-			day = now.Day() + 2
-		} else if now.Month() == time.December && now.Day() <= 24 {
-			// Before 11:45 PM on Dec 1-24, schedule for today
-			nextReminder = time.Date(now.Year(), now.Month(), now.Day(), 23, 45, 0, 0, tzEastern)
-			day = now.Day() + 1
-		} else if now.Month() == time.December {
-			// After Dec 24, schedule for next year
-			nextReminder = time.Date(now.Year()+1, time.November, 30, 23, 45, 0, 0, tzEastern)
-			day = 1
-		} else if now.Month() == time.November && now.Day() >= 30 && now.Hour() >= 23 && now.Minute() >= 45 {
-			// After 11:45 PM on Nov 30, schedule for Dec 1
-			nextReminder = time.Date(now.Year(), time.December, 1, 23, 45, 0, 0, tzEastern)
-			day = 1
-		} else {
-			// Otherwise, schedule for Nov 30 of this year
-			nextReminder = time.Date(now.Year(), time.November, 30, 23, 45, 0, 0, tzEastern)
-			day = 1
+		// Get the cached leaderboard, so we can have access to NumDays and Day1Timestamp.
+		leaderboard, err := p.getOrCacheLeaderboard(ctx)
+		if err != nil {
+			p.logger.With(slog.Any("error", err)).Error("Failed to get leaderboard for reminders, retrying in 1 hour")
+			select {
+			case <-time.After(1 * time.Hour):
+				continue
+			case <-ctx.Done():
+				return
+			}
 		}
+
+		// Determine the next notification time
+		now := time.Now().In(tzEastern)
+		nextReminder, day := calculateNextReminder(leaderboard, now)
 
 		sleepDuration := nextReminder.Sub(now)
 		p.logger.With(
 			slog.Time("next_reminder", nextReminder),
 			slog.Duration("sleep_duration", sleepDuration),
+			slog.Int("day", day),
 		).Info("Next reminder scheduled")
 
 		select {
