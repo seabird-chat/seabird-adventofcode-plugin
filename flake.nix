@@ -1,22 +1,67 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
   };
 
-  outputs = {nixpkgs, ...}: let
-    forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
-  in {
-    formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.alejandra);
+  outputs =
+    inputs@{
+      nixpkgs,
+      flake-parts,
+      ...
+    }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = nixpkgs.lib.systems.flakeExposed;
+      perSystem =
+        { pkgs, ... }:
+        {
+          formatter = pkgs.treefmt.withConfig {
+            runtimeInputs = [
+              pkgs.nixfmt
+              pkgs.gotools
+            ];
 
-    devShells = forAllSystems (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
-    in {
-      default = pkgs.mkShell {
-        packages = with pkgs; [
-          go
-          gopls
-        ];
-      };
-    });
-  };
+            settings = {
+              on-unmatched = "info";
+
+              formatter.nixfmt = {
+                command = "nixfmt";
+                includes = [ "*.nix" ];
+              };
+
+              formatter.goimports = {
+                command = "goimports";
+                options = [ "-w" ];
+                includes = [ "*.go" ];
+              };
+            };
+          };
+
+          packages.default = pkgs.buildGoModule rec {
+            pname = "seabird-adventofcode-plugin";
+            version = "0.2.6-dev";
+
+            src = ./.;
+
+            vendorHash = "sha256-JPNuSD9Q6e5c0lDg5WDQ+pbaB8JJVvtuiZ4njH+O2Ko=";
+
+            subPackages = [ "cmd/${pname}" ];
+
+            ldflags = [
+              "-s"
+              "-w"
+            ];
+          };
+
+          devShells.default = pkgs.mkShell {
+            nativeBuildInputs = [
+              pkgs.go
+              pkgs.gopls
+            ];
+          };
+        };
+    };
 }
