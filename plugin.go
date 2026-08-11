@@ -358,7 +358,7 @@ func calculateNextReminder(leaderboard *Leaderboard, now time.Time) (time.Time, 
 	}
 
 	// Calculate how many days before or after the start date we are
-	daysSinceStart := int(now.Sub(firstNotificationTime).Hours() / 24) + 1
+	daysSinceStart := int(now.Sub(firstNotificationTime).Hours()/24) + 1
 
 	// If we're after the last notification, we need to send what we think the first notification for next year will be.
 	if daysSinceStart >= leaderboard.NumDays {

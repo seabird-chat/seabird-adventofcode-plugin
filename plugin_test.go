@@ -13,11 +13,11 @@ func TestCalculateNextReminder(t *testing.T) {
 	day1Timestamp := day1Start.Unix()
 
 	tests := []struct {
-		name              string
-		leaderboard       *Leaderboard
-		now               time.Time
-		expectedDay       int
-		expectedReminder  time.Time
+		name             string
+		leaderboard      *Leaderboard
+		now              time.Time
+		expectedDay      int
+		expectedReminder time.Time
 	}{
 		{
 			name: "before event starts",
