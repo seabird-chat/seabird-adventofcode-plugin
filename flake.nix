@@ -42,7 +42,7 @@
 
           packages.default = pkgs.buildGoModule rec {
             pname = "seabird-adventofcode-plugin";
-            version = "0.2.7-dev";
+            version = "0.2.7";
 
             src = ./.;
 
