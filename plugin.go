@@ -91,19 +91,26 @@ func (p *Plugin) runSeabirdStream(ctx context.Context) error {
 	}
 	defer events.Close()
 
-	for event := range events.C {
-		switch v := event.GetInner().(type) {
-		case *pb.Event_Command:
-			switch v.Command.GetCommand() {
-			case "aoc-refresh":
-				go p.handleRefresh(ctx, v.Command)
-			case "aoc-status", "aoc", "advent":
-				go p.handleStatus(ctx, v.Command)
+	for {
+		select {
+		case event, ok := <-events.C:
+			if !ok {
+				return errors.New("event stream unexpectedly closed")
 			}
+
+			switch v := event.GetInner().(type) {
+			case *pb.Event_Command:
+				switch v.Command.GetCommand() {
+				case "aoc-refresh":
+					go p.handleRefresh(ctx, v.Command)
+				case "aoc-status", "aoc", "advent":
+					go p.handleStatus(ctx, v.Command)
+				}
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
-
-	return errors.New("event stream unexpectedly closed")
 }
 
 func (p *Plugin) handleStatus(ctx context.Context, event *pb.CommandEvent) {
@@ -172,6 +179,7 @@ func (p *Plugin) handleRefresh(ctx context.Context, event *pb.CommandEvent) {
 			}
 		case <-time.After(5 * time.Second):
 			_ = p.sbClient.MentionReply(event.Source, "Leaderboard refresh timed out")
+		case <-ctx.Done():
 		}
 	default:
 		_ = p.sbClient.MentionReply(event.Source, "Leaderboard refresh already queued")
@@ -286,6 +294,12 @@ func (p *Plugin) updateLeaderboard(ctx context.Context) error {
 	}
 
 	for _, event := range events {
+		// Stop before sending if we're shutting down, otherwise the send would
+		// fail and the timestamp would still be written, dropping the message.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		p.sbClient.Inner.SendMessage(ctx, &pb.SendMessageRequest{
 			ChannelId: p.config.AOCChannel,
 			Text:      event.String(),
@@ -315,6 +329,8 @@ func (p *Plugin) runAOCUpdateLoop(ctx context.Context) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 			p.logger.Info("Running scheduled leaderboard update")
 

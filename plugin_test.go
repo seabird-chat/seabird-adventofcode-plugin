@@ -1,6 +1,11 @@
 package adventofcode
 
 import (
+	"context"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
 	"testing"
 	"time"
 
@@ -152,5 +157,34 @@ func TestCalculateNextReminder(t *testing.T) {
 				tt.expectedReminder.Format(time.RFC3339),
 				nextReminder.Format(time.RFC3339))
 		})
+	}
+}
+
+type failingTransport struct{}
+
+func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("network disabled in test")
+}
+
+func TestRunAOCUpdateLoopStopsOnContextCancel(t *testing.T) {
+	plugin := &Plugin{
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		aocClient:   &AOCClient{client: &http.Client{Transport: failingTransport{}}},
+		queueUpdate: make(chan chan bool),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		plugin.runAOCUpdateLoop(ctx)
+		close(done)
+	}()
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("runAOCUpdateLoop did not return after its context was canceled")
 	}
 }
